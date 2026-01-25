@@ -1,155 +1,451 @@
 // ============================================
-// SIMPLE LANDING - BLACK SCREEN, WHITE CIRCLE
+// 8-BIT MUSIC PLAYER
 // ============================================
 
-const canvas = document.getElementById('canvas');
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x000000);
+const musicPlayer = {
+  audioContext: null,
+  isPlaying: false,
+  intervalIds: [],
+  activeOscillators: [],
 
-const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
-camera.position.set(0, 0, 10);
-camera.lookAt(0, 0, 0);
+  init() {
+    if (!this.audioContext) {
+      this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    }
+  },
 
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  // Play a single note
+  playNote(freq, type, volume, duration, startTime) {
+    const ctx = this.audioContext;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = type;
+    osc.frequency.value = freq;
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    gain.gain.setValueAtTime(volume, startTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration * 0.9);
+
+    osc.start(startTime);
+    osc.stop(startTime + duration);
+
+    this.activeOscillators.push(osc);
+  },
+
+  // Play kick drum
+  playKick(startTime) {
+    const ctx = this.audioContext;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(150, startTime);
+    osc.frequency.exponentialRampToValueAtTime(30, startTime + 0.1);
+
+    gain.gain.setValueAtTime(0.4, startTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.15);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(startTime);
+    osc.stop(startTime + 0.15);
+
+    this.activeOscillators.push(osc);
+  },
+
+  // Play snare drum
+  playSnare(startTime) {
+    const ctx = this.audioContext;
+
+    // Noise component
+    const bufferSize = ctx.sampleRate * 0.1;
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = Math.random() * 2 - 1;
+    }
+
+    const noise = ctx.createBufferSource();
+    noise.buffer = buffer;
+
+    const noiseGain = ctx.createGain();
+    noiseGain.gain.setValueAtTime(0.15, startTime);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.1);
+
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'highpass';
+    filter.frequency.value = 1000;
+
+    noise.connect(filter);
+    filter.connect(noiseGain);
+    noiseGain.connect(ctx.destination);
+    noise.start(startTime);
+    noise.stop(startTime + 0.1);
+
+    // Tone component
+    const osc = ctx.createOscillator();
+    const oscGain = ctx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(200, startTime);
+    osc.frequency.exponentialRampToValueAtTime(50, startTime + 0.05);
+    oscGain.gain.setValueAtTime(0.15, startTime);
+    oscGain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.08);
+    osc.connect(oscGain);
+    oscGain.connect(ctx.destination);
+    osc.start(startTime);
+    osc.stop(startTime + 0.08);
+
+    this.activeOscillators.push(noise, osc);
+  },
+
+  // Play hi-hat
+  playHiHat(startTime, open = false) {
+    const ctx = this.audioContext;
+    const bufferSize = ctx.sampleRate * (open ? 0.15 : 0.05);
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = Math.random() * 2 - 1;
+    }
+
+    const noise = ctx.createBufferSource();
+    noise.buffer = buffer;
+
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(open ? 0.08 : 0.06, startTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, startTime + (open ? 0.15 : 0.05));
+
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'highpass';
+    filter.frequency.value = 7000;
+
+    noise.connect(filter);
+    filter.connect(gain);
+    gain.connect(ctx.destination);
+    noise.start(startTime);
+    noise.stop(startTime + (open ? 0.15 : 0.05));
+
+    this.activeOscillators.push(noise);
+  },
+
+  // Cube Runner - Full band with drums
+  playCubeRunner() {
+    const ctx = this.audioContext;
+    const tempo = 140;
+    const beatDuration = 60 / tempo;
+    const barDuration = beatDuration * 4;
+
+    // Lead melody (16 steps per bar)
+    const leadNotes = [
+      392, 0, 523, 0, 392, 523, 659, 0,
+      587, 0, 523, 0, 392, 0, 330, 0,
+      392, 0, 523, 0, 659, 0, 784, 659,
+      587, 523, 392, 0, 330, 0, 262, 0
+    ];
+
+    // Bass line (16 steps)
+    const bassNotes = [
+      131, 0, 131, 131, 165, 0, 165, 165,
+      147, 0, 147, 147, 131, 0, 131, 0,
+      131, 0, 131, 131, 165, 0, 165, 165,
+      147, 0, 147, 147, 131, 131, 98, 0
+    ];
+
+    // Arpeggio (16 steps)
+    const arpNotes = [
+      262, 330, 392, 330, 262, 330, 392, 523,
+      294, 349, 440, 349, 262, 330, 392, 330,
+      262, 330, 392, 330, 330, 392, 523, 659,
+      294, 349, 440, 349, 262, 330, 392, 262
+    ];
+
+    // Drum pattern (16 steps): K=kick, S=snare, H=hihat, O=open hihat
+    const drums = ['K', 'H', 'H', 'H', 'S', 'H', 'K', 'H', 'K', 'H', 'H', 'H', 'S', 'H', 'O', 'H'];
+
+    let step = 0;
+    const stepDuration = barDuration / 16;
+
+    const playStep = () => {
+      if (!this.isPlaying) return;
+
+      const now = ctx.currentTime;
+      const idx = step % 32; // Pattern is 2 bars
+      const drumIdx = step % 16;
+
+      // Lead
+      if (leadNotes[idx] > 0) {
+        this.playNote(leadNotes[idx], 'square', 0.08, stepDuration * 0.8, now);
+      }
+
+      // Bass
+      if (bassNotes[idx] > 0) {
+        this.playNote(bassNotes[idx], 'sawtooth', 0.12, stepDuration * 0.7, now);
+      }
+
+      // Arpeggio
+      if (arpNotes[idx] > 0) {
+        this.playNote(arpNotes[idx], 'triangle', 0.05, stepDuration * 0.5, now);
+      }
+
+      // Drums
+      const drum = drums[drumIdx];
+      if (drum === 'K') this.playKick(now);
+      if (drum === 'S') this.playSnare(now);
+      if (drum === 'H') this.playHiHat(now, false);
+      if (drum === 'O') this.playHiHat(now, true);
+
+      step++;
+    };
+
+    playStep();
+    this.intervalIds.push(setInterval(playStep, stepDuration * 1000));
+  },
+
+  // Ring World - Mysterious, spacey with long harmonies
+  playRingWorld() {
+    const ctx = this.audioContext;
+    const chordDuration = 2.5; // Long sustained chords
+
+    // Chord progressions (each chord is an array of frequencies)
+    const chords = [
+      [196, 247, 294],       // G minor
+      [175, 220, 262],       // F major
+      [165, 208, 247],       // E minor
+      [147, 185, 220],       // D minor
+      [165, 208, 247],       // E minor
+      [175, 220, 262],       // F major
+      [196, 247, 294],       // G minor
+      [220, 277, 330],       // A minor
+    ];
+
+    // High melody notes (played occasionally)
+    const melodyNotes = [587, 523, 494, 440, 494, 523, 587, 659];
+
+    let chordIndex = 0;
+    let melodyIndex = 0;
+
+    const playChord = () => {
+      if (!this.isPlaying) return;
+      const now = ctx.currentTime;
+      const chord = chords[chordIndex];
+
+      // Play each note in the chord with slight timing offsets for warmth
+      chord.forEach((freq, i) => {
+        // Low pad (triangle wave)
+        this.playPad(freq, 'triangle', 0.06, chordDuration * 0.95, now + i * 0.02);
+        // Higher octave pad (sine wave, quieter)
+        this.playPad(freq * 2, 'sine', 0.025, chordDuration * 0.9, now + i * 0.03);
+      });
+
+      // Play melody note on some chords
+      if (chordIndex % 2 === 0) {
+        this.playPad(melodyNotes[melodyIndex], 'sine', 0.04, chordDuration * 0.7, now + 0.3);
+        melodyIndex = (melodyIndex + 1) % melodyNotes.length;
+      }
+
+      chordIndex = (chordIndex + 1) % chords.length;
+    };
+
+    playChord();
+    this.intervalIds.push(setInterval(playChord, chordDuration * 1000));
+  },
+
+  // Play a pad sound with slow attack and release
+  playPad(freq, type, volume, duration, startTime) {
+    const ctx = this.audioContext;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = type;
+    osc.frequency.value = freq;
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    // Slow attack, sustain, slow release
+    const attackTime = 0.3;
+    const releaseTime = 0.5;
+
+    gain.gain.setValueAtTime(0.001, startTime);
+    gain.gain.exponentialRampToValueAtTime(volume, startTime + attackTime);
+    gain.gain.setValueAtTime(volume, startTime + duration - releaseTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+
+    osc.start(startTime);
+    osc.stop(startTime + duration);
+
+    this.activeOscillators.push(osc);
+  },
+
+  // Crystal Core - Energetic, intense
+  playCrystalCore() {
+    const ctx = this.audioContext;
+    const tempo = 160;
+    const stepDuration = (60 / tempo) / 2;
+
+    const notes = [330, 392, 494, 392, 330, 294, 330, 392, 494, 587, 494, 392];
+    let step = 0;
+
+    const playStep = () => {
+      if (!this.isPlaying) return;
+      const now = ctx.currentTime;
+      const noteIdx = step % notes.length;
+
+      this.playNote(notes[noteIdx], 'sawtooth', 0.08, stepDuration * 0.7, now);
+
+      // Add kick on every 4th step
+      if (step % 4 === 0) this.playKick(now);
+      // Add snare on every 8th step offset by 4
+      if (step % 8 === 4) this.playSnare(now);
+      // Hi-hat on every other step
+      if (step % 2 === 1) this.playHiHat(now);
+
+      step++;
+    };
+
+    playStep();
+    this.intervalIds.push(setInterval(playStep, stepDuration * 1000));
+  },
+
+  play(gameIndex) {
+    this.init();
+    this.stop();
+    this.isPlaying = true;
+
+    switch (gameIndex) {
+      case 0:
+        this.playCubeRunner();
+        break;
+      case 1:
+        this.playRingWorld();
+        break;
+      case 2:
+        this.playCrystalCore();
+        break;
+      default:
+        this.playCubeRunner();
+    }
+  },
+
+  stop() {
+    this.isPlaying = false;
+
+    this.intervalIds.forEach(id => clearInterval(id));
+    this.intervalIds = [];
+
+    this.activeOscillators.forEach(osc => {
+      try { osc.stop(); } catch (e) {}
+    });
+    this.activeOscillators = [];
+  }
+};
 
 // ============================================
-// WHITE CIRCLE
+// SOUND EFFECTS
 // ============================================
 
-const circleGeometry = new THREE.CircleGeometry(2, 64);
-const circleMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
-const circle = new THREE.Mesh(circleGeometry, circleMaterial);
-circle.position.set(0, 0, 0);
-scene.add(circle);
+const sfx = {
+  audioContext: null,
+
+  init() {
+    if (!this.audioContext) {
+      this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    }
+  },
+
+  playSlotClick() {
+    this.init();
+
+    const ctx = this.audioContext;
+
+    // Create a short noise burst + tone for satisfying click
+    const gainNode = ctx.createGain();
+    gainNode.connect(ctx.destination);
+
+    // Quick attack, fast decay
+    gainNode.gain.setValueAtTime(0.3, ctx.currentTime);
+    gainNode.gain.exponentialDecayTo = 0.01;
+    gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+
+    // Low thud oscillator
+    const osc1 = ctx.createOscillator();
+    osc1.type = 'sine';
+    osc1.frequency.setValueAtTime(150, ctx.currentTime);
+    osc1.frequency.exponentialRampToValueAtTime(50, ctx.currentTime + 0.1);
+    osc1.connect(gainNode);
+    osc1.start(ctx.currentTime);
+    osc1.stop(ctx.currentTime + 0.1);
+
+    // Higher click oscillator
+    const gainNode2 = ctx.createGain();
+    gainNode2.connect(ctx.destination);
+    gainNode2.gain.setValueAtTime(0.2, ctx.currentTime);
+    gainNode2.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.05);
+
+    const osc2 = ctx.createOscillator();
+    osc2.type = 'square';
+    osc2.frequency.setValueAtTime(800, ctx.currentTime);
+    osc2.frequency.exponentialRampToValueAtTime(200, ctx.currentTime + 0.05);
+    osc2.connect(gainNode2);
+    osc2.start(ctx.currentTime);
+    osc2.stop(ctx.currentTime + 0.05);
+  }
+};
 
 // ============================================
-// "ENTER" TEXT
+// RESPONSIVE HELPERS
 // ============================================
 
-function createTextSprite(text) {
-  const canvas = document.createElement('canvas');
-  const ctx = canvas.getContext('2d');
-  canvas.width = 512;
-  canvas.height = 128;
+function getResponsiveValues() {
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const isLandscape = vw > vh && vh < 500;
 
-  ctx.fillStyle = '#000000';
-  ctx.font = 'bold 60px Arial, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+  let cardWidth, cardHeight, slotWidth;
 
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.needsUpdate = true;
-
-  const material = new THREE.SpriteMaterial({
-    map: texture,
-    transparent: true,
-  });
-  const sprite = new THREE.Sprite(material);
-  sprite.scale.set(4, 1, 1);
-  return sprite;
-}
-
-const enterText = createTextSprite('enter');
-enterText.position.set(0, 0, 0.1);
-scene.add(enterText);
-
-// ============================================
-// FLOATING ANIMATION
-// ============================================
-
-let time = 0;
-let isAnimating = false;
-let hasTransitioned = false;
-
-function animate() {
-  requestAnimationFrame(animate);
-
-  if (hasTransitioned) return;
-
-  time += 0.016;
-
-  // Gentle floating motion (only when not transitioning)
-  if (!isAnimating) {
-    circle.position.y = Math.sin(time * 0.8) * 0.15;
-    enterText.position.y = circle.position.y;
+  if (isLandscape) {
+    cardWidth = 140;
+    cardHeight = 180;
+    slotWidth = 160;
+  } else if (vw <= 380) {
+    cardWidth = 180;
+    cardHeight = 100;
+    slotWidth = 160;
+  } else if (vw <= 600) {
+    cardWidth = 200;
+    cardHeight = 120;
+    slotWidth = 180;
+  } else if (vw <= 768) {
+    cardWidth = 180;
+    cardHeight = 240;
+    slotWidth = 200;
+  } else {
+    cardWidth = 220;
+    cardHeight = 300;
+    slotWidth = 240;
   }
 
-  renderer.render(scene, camera);
+  // Calculate slot position - place it below center, accounting for card stack on mobile
+  const isMobileVertical = vw <= 600 && !isLandscape;
+  const slotOffset = isMobileVertical ? cardHeight * 0.6 : cardHeight * 0.6;
+  const slotTop = Math.min(vh / 2 + slotOffset, vh - 60);
+
+  return { cardWidth, cardHeight, slotWidth, slotTop, isMobileVertical, isLandscape, vw, vh };
 }
 
-animate();
+function updateSlotPosition() {
+  const { slotTop } = getResponsiveValues();
+  const slotContainer = document.querySelector('.slot-container');
+  const slotVoid = document.querySelector('.slot-void');
+  const speedLines = document.querySelector('.speed-lines');
 
-// ============================================
-// CLICK TRANSITION (Enter screen)
-// ============================================
-
-function triggerTransition() {
-  if (isAnimating || hasTransitioned) return;
-  isAnimating = true;
-
-  const cardsSection = document.querySelector('.cards-section');
-  const cards = document.querySelectorAll('.card');
-
-  // Timeline for the transition
-  const tl = gsap.timeline();
-
-  // Animate circle scale and text fade
-  tl.to(circle.scale, {
-    x: 50,
-    y: 50,
-    z: 1,
-    duration: 0.6,
-    ease: 'power2.in',
-    onUpdate: () => renderer.render(scene, camera)
-  }, 0);
-
-  // Fade out the enter text
-  tl.to(enterText.material, {
-    opacity: 0,
-    duration: 0.3,
-    ease: 'power2.in',
-    onUpdate: () => renderer.render(scene, camera)
-  }, 0);
-
-  // Move camera forward for zoom effect
-  tl.to(camera.position, {
-    z: 5,
-    duration: 0.6,
-    ease: 'power2.in',
-    onUpdate: () => renderer.render(scene, camera)
-  }, 0);
-
-  // After circle expands, show the cards section
-  tl.call(() => {
-    hasTransitioned = true;
-    cardsSection.classList.add('visible');
-    document.body.style.cursor = 'default';
-  }, [], 0.5);
-
-  // Fade in cards with stagger
-  tl.to(cards, {
-    opacity: 1,
-    y: 0,
-    duration: 0.5,
-    stagger: 0.1,
-    ease: 'power2.out'
-  }, 0.6);
+  if (!cardInserted) {
+    slotContainer.style.top = slotTop + 'px';
+    slotVoid.style.top = (slotTop + 4) + 'px';
+    speedLines.style.top = (slotTop - 2) + 'px';
+  }
 }
-
-// Click anywhere to trigger enter transition
-document.addEventListener('click', (e) => {
-  // Don't trigger enter transition if clicking on cards
-  if (e.target.closest('.card')) return;
-  triggerTransition();
-});
-
-// Also trigger on Enter key
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' && !hasTransitioned) triggerTransition();
-});
 
 // ============================================
 // CARD SLOT ANIMATION
@@ -166,13 +462,19 @@ function insertCard(clickedCard) {
   const slotBottom = document.querySelector('.slot-bar.bottom');
   const clickedIndex = Number(clickedCard.dataset.index);
 
-  // Get positions
+  const { isMobileVertical } = getResponsiveValues();
+
+  // Update slot position for current viewport before animation
+  updateSlotPosition();
+
+  // Get positions after slot update
   const slotRect = slotBottom.getBoundingClientRect();
   const cardRect = clickedCard.getBoundingClientRect();
 
-  // Calculate target positions
+  // Calculate target positions - card overlaps slot by ~40px (scaled for mobile)
+  const overlapAmount = isMobileVertical ? 30 : 40;
   const targetLeft = slotRect.left + slotRect.width / 2 - cardRect.width / 2;
-  const targetTop = slotRect.top - 40; // Card bottom overlaps the slot bars
+  const targetTop = slotRect.top - overlapAmount;
 
   const tl = gsap.timeline();
 
@@ -224,10 +526,11 @@ function insertCard(clickedCard) {
     ease: 'power2.in'
   }, 0.85);
 
-  // Trigger speed lines on impact
+  // Trigger speed lines and click sound on impact
   const speedLines = document.querySelector('.speed-lines');
   tl.call(() => {
     speedLines.classList.add('active');
+    sfx.playSlotClick();
   }, [], 1.28);
 
   // Tiny settle bounce
@@ -271,10 +574,12 @@ function insertCard(clickedCard) {
     ease: 'power2.out'
   }, 1.5);
 
-  // Show back button and game content
+  // Show back button and game content, then start the game
   tl.call(() => {
     backButton.classList.add('visible');
     gameContent.classList.add('visible');
+    // Initialize the game for this card
+    gameManager.init(clickedIndex);
   }, [], 2.0);
 }
 
@@ -284,6 +589,9 @@ let isGoingBack = false;
 function goBack() {
   if (isGoingBack) return;
   isGoingBack = true;
+
+  // Destroy the current game
+  gameManager.destroy();
 
   const slotContainer = document.querySelector('.slot-container');
   const speedLines = document.querySelector('.speed-lines');
@@ -301,9 +609,11 @@ function goBack() {
 
   const selectedIndex = Number(selectedCard.dataset.index);
 
-  // Original positions
-  const originalSlotTop = window.innerHeight / 2 + 184;
-  const originalCardTop = originalSlotTop - 40;
+  // Get responsive values for original positions
+  const { slotTop, isMobileVertical } = getResponsiveValues();
+  const overlapAmount = isMobileVertical ? 30 : 40;
+  const originalSlotTop = slotTop;
+  const originalCardTop = originalSlotTop - overlapAmount;
 
   const tl = gsap.timeline();
 
@@ -351,15 +661,8 @@ function goBack() {
     ease: 'power2.in'
   }, 0.7);
 
-  // Step 5: Reset selected card to flow and slide other cards back in
+  // Step 5: Slide other cards back in first
   tl.call(() => {
-    // Reset selected card to normal flow
-    selectedCard.classList.remove('inserting', 'selected');
-    selectedCard.style.cssText = '';
-    gsap.set(selectedCard, { clearProps: 'all' });
-    gsap.set(selectedCard, { opacity: 1, y: 0 });
-
-    // Slide other cards back in
     cards.forEach(card => {
       const idx = Number(card.dataset.index);
       if (idx !== selectedIndex) {
@@ -373,7 +676,37 @@ function goBack() {
     });
   }, [], 0.9);
 
-  // Step 6: Final cleanup
+  // Step 6: Animate selected card back to its original position in the row
+  tl.call(() => {
+    // Create invisible clone to measure target position without affecting the real card
+    const clone = selectedCard.cloneNode(true);
+    clone.classList.remove('inserting', 'selected');
+    clone.style.cssText = 'visibility: hidden; position: static; opacity: 1; transform: none;';
+    selectedCard.parentNode.insertBefore(clone, selectedCard);
+
+    // Measure where the clone lands in normal flow
+    const targetRect = clone.getBoundingClientRect();
+
+    // Remove the clone
+    clone.remove();
+
+    // Animate the real card to the target position
+    gsap.to(selectedCard, {
+      top: targetRect.top,
+      left: targetRect.left,
+      duration: 0.4,
+      ease: 'power2.out',
+      onComplete: () => {
+        // Now fully reset to normal flow
+        selectedCard.classList.remove('inserting', 'selected');
+        selectedCard.style.cssText = '';
+        gsap.set(selectedCard, { clearProps: 'all' });
+        gsap.set(selectedCard, { opacity: 1, y: 0 });
+      }
+    });
+  }, [], 1.1);
+
+  // Step 7: Final cleanup
   tl.call(() => {
     // Reset slot container
     slotContainer.style.cssText = '';
@@ -393,11 +726,14 @@ function goBack() {
     // Allow new card insertion
     cardInserted = false;
     isGoingBack = false;
-  }, [], 1.3);
+  }, [], 1.6);
 }
 
 // Add click listeners to cards after DOM loads
 document.addEventListener('DOMContentLoaded', () => {
+  // Initialize slot position for current viewport
+  updateSlotPosition();
+
   const cards = document.querySelectorAll('.card');
   cards.forEach(card => {
     card.addEventListener('click', (e) => {
@@ -415,11 +751,157 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ============================================
-// RESIZE
+// GAME MANAGER
 // ============================================
 
+const gameManager = {
+  renderer: null,
+  scene: null,
+  camera: null,
+  animationId: null,
+  currentGame: null,
+
+  init(gameIndex) {
+    const gameCanvas = document.getElementById('game-canvas');
+    const container = document.querySelector('.game-content');
+    const width = container.clientWidth;
+    const height = container.clientHeight;
+
+    // Create new renderer for game
+    this.renderer = new THREE.WebGLRenderer({ canvas: gameCanvas, antialias: true });
+    this.renderer.setSize(width, height);
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+    // Create scene and camera
+    this.scene = new THREE.Scene();
+    this.scene.background = new THREE.Color(0x1a1a2e);
+
+    this.camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 1000);
+    this.camera.position.set(0, 0, 10);
+
+    // Load the game based on index
+    this.loadGame(gameIndex);
+
+    // Start render loop
+    this.animate();
+
+    // Start music for this game
+    musicPlayer.play(gameIndex);
+  },
+
+  loadGame(gameIndex) {
+    // Each card can load a different game
+    // For now, create a simple placeholder for each
+    switch (gameIndex) {
+      case 0:
+        this.createGame1();
+        break;
+      case 1:
+        this.createGame2();
+        break;
+      case 2:
+        this.createGame3();
+        break;
+      default:
+        this.createGame1();
+    }
+  },
+
+  // Placeholder games - replace with your actual game logic
+  createGame1() {
+    const geometry = new THREE.BoxGeometry(2, 2, 2);
+    const material = new THREE.MeshBasicMaterial({ color: 0xa8e6cf, wireframe: true });
+    const cube = new THREE.Mesh(geometry, material);
+    this.scene.add(cube);
+    this.currentGame = { type: 'cube', object: cube };
+  },
+
+  createGame2() {
+    const geometry = new THREE.TorusGeometry(1.5, 0.5, 16, 100);
+    const material = new THREE.MeshBasicMaterial({ color: 0xffd93d, wireframe: true });
+    const torus = new THREE.Mesh(geometry, material);
+    this.scene.add(torus);
+    this.currentGame = { type: 'torus', object: torus };
+  },
+
+  createGame3() {
+    const geometry = new THREE.IcosahedronGeometry(2, 0);
+    const material = new THREE.MeshBasicMaterial({ color: 0xff6b6b, wireframe: true });
+    const icosahedron = new THREE.Mesh(geometry, material);
+    this.scene.add(icosahedron);
+    this.currentGame = { type: 'icosahedron', object: icosahedron };
+  },
+
+  animate() {
+    this.animationId = requestAnimationFrame(() => this.animate());
+
+    // Rotate the current game object
+    if (this.currentGame && this.currentGame.object) {
+      this.currentGame.object.rotation.x += 0.01;
+      this.currentGame.object.rotation.y += 0.01;
+    }
+
+    this.renderer.render(this.scene, this.camera);
+  },
+
+  resize() {
+    if (!this.renderer) return;
+    const container = document.querySelector('.game-content');
+    const width = container.clientWidth;
+    const height = container.clientHeight;
+
+    this.camera.aspect = width / height;
+    this.camera.updateProjectionMatrix();
+    this.renderer.setSize(width, height);
+  },
+
+  destroy() {
+    // Stop music
+    musicPlayer.stop();
+
+    // Stop animation loop
+    if (this.animationId) {
+      cancelAnimationFrame(this.animationId);
+      this.animationId = null;
+    }
+
+    // Dispose of game objects
+    if (this.currentGame && this.currentGame.object) {
+      this.currentGame.object.geometry.dispose();
+      this.currentGame.object.material.dispose();
+      this.scene.remove(this.currentGame.object);
+      this.currentGame = null;
+    }
+
+    // Dispose of renderer
+    if (this.renderer) {
+      this.renderer.dispose();
+      this.renderer = null;
+    }
+
+    this.scene = null;
+    this.camera = null;
+  }
+};
+
+// ============================================
+// RESIZE & ORIENTATION
+// ============================================
+
+let resizeTimeout;
 window.addEventListener('resize', () => {
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
+  // Debounce resize events
+  clearTimeout(resizeTimeout);
+  resizeTimeout = setTimeout(() => {
+    updateSlotPosition();
+    gameManager.resize();
+  }, 100);
+});
+
+// Handle orientation change specifically (fires before resize on some devices)
+window.addEventListener('orientationchange', () => {
+  setTimeout(() => {
+    updateSlotPosition();
+    gameManager.resize();
+  }, 150);
 });

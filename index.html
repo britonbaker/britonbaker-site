@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Briton Baker</title>
   <link rel="stylesheet" href="style.css">
 </head>
@@ -32,18 +32,23 @@
     <button class="back-button">← Back</button>
 
     <!-- Game content area -->
-    <div class="game-content"></div>
+    <div class="game-content">
+      <canvas id="game-canvas"></canvas>
+    </div>
 
     <!-- Game cards -->
     <div class="cards-container">
-      <div class="card" data-index="0">
-        <span class="card-label">Game 1</span>
+      <div class="card card-green" data-index="0" data-title="Cube Runner">
+        <div class="card-icon">▣</div>
+        <span class="card-label">Cube Runner</span>
       </div>
-      <div class="card" data-index="1">
-        <span class="card-label">Game 2</span>
+      <div class="card card-yellow" data-index="1" data-title="Ring World">
+        <div class="card-icon">◎</div>
+        <span class="card-label">Ring World</span>
       </div>
-      <div class="card" data-index="2">
-        <span class="card-label">Game 3</span>
+      <div class="card card-red" data-index="2" data-title="Crystal Core">
+        <div class="card-icon">◆</div>
+        <span class="card-label">Crystal Core</span>
       </div>
     </div>
   </main>
