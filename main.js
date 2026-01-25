@@ -444,23 +444,37 @@ let cardInserted = false;
 
 function insertCard(clickedCard) {
   if (cardInserted) return;
-  cardInserted = true;
 
   const cards = document.querySelectorAll('.card');
   const slotContainer = document.querySelector('.slot-container');
   const slotBottom = document.querySelector('.slot-bar.bottom');
   const clickedIndex = Number(clickedCard.dataset.index);
 
-  // Update slot position for current viewport before animation
+  // Update slot position BEFORE setting cardInserted (updateSlotPosition checks this flag)
   updateSlotPosition();
 
-  // Get positions after slot update
+  // Now mark as inserted to prevent double-clicks
+  cardInserted = true;
+
+  // Clear any leftover GSAP properties and inline styles before capturing position
+  gsap.set(clickedCard, { clearProps: 'all' });
+  clickedCard.style.cssText = '';
+
+  // Force browser reflow to ensure all layouts are recalculated
+  void slotContainer.offsetHeight;
+  void clickedCard.offsetHeight;
+
+  // Get positions after reflow
+  // Use offsetWidth/offsetHeight to get actual size without hover transform (scale)
   const slotRect = slotBottom.getBoundingClientRect();
+  const cardWidth = clickedCard.offsetWidth;
+  const cardHeight = clickedCard.offsetHeight;
   const cardRect = clickedCard.getBoundingClientRect();
 
-  // Calculate target positions - card overlaps slot by 40px
+  // Calculate target positions - use viewport center for consistent centering
   const overlapAmount = 40;
-  const targetLeft = slotRect.left + slotRect.width / 2 - cardRect.width / 2;
+  const viewportCenter = window.innerWidth / 2;
+  const targetLeft = Math.round(viewportCenter - cardWidth / 2);
   const targetTop = slotRect.top - overlapAmount;
 
   const tl = gsap.timeline();
@@ -493,6 +507,9 @@ function insertCard(clickedCard) {
   clickedCard.classList.add('inserting');
   clickedCard.classList.add('selected');
 
+  // Allow card to escape container clipping on mobile
+  clickedCard.parentNode.classList.add('card-inserting');
+
   // Set initial fixed position
   clickedCard.style.top = startTop + 'px';
   clickedCard.style.left = startLeft + 'px';
@@ -500,7 +517,7 @@ function insertCard(clickedCard) {
 
   // STEP 1: Move card to center above the slot
   tl.to(clickedCard, {
-    top: slotRect.top - cardRect.height - 20,
+    top: slotRect.top - cardHeight - 20,
     left: targetLeft,
     duration: 0.4,
     ease: 'power2.out'
@@ -541,6 +558,11 @@ function insertCard(clickedCard) {
 
   const finalTop = 60;
   const cardFinalTop = finalTop - 40; // Same offset as targetTop relative to slot
+
+  // Raise card above void before moving up
+  tl.call(() => {
+    clickedCard.classList.add('inserted');
+  }, [], 1.45);
 
   // Animate card, slot, and void up together (no DOM moves!)
   tl.to(clickedCard, {
@@ -634,19 +656,19 @@ function goBack() {
     ease: 'power2.inOut'
   }, 0.2);
 
-  // Step 3: Card rises up out of slot
+  // Step 3: Card rises up out of slot (fully visible above slot)
   tl.to(selectedCard, {
-    top: originalCardTop - 100,
-    duration: 0.3,
+    top: originalCardTop - 260,
+    duration: 0.35,
     ease: 'power2.out'
   }, 0.6);
 
-  // Step 4: Fade out slot
+  // Step 4: Fade out slot (after card is fully out)
   tl.to(slotContainer, {
     opacity: 0,
     duration: 0.3,
     ease: 'power2.in'
-  }, 0.7);
+  }, 0.95);
 
   // Step 5: Slide other cards back in first
   tl.call(() => {
@@ -667,7 +689,7 @@ function goBack() {
   tl.call(() => {
     // Create invisible clone to measure target position without affecting the real card
     const clone = selectedCard.cloneNode(true);
-    clone.classList.remove('inserting', 'selected');
+    clone.classList.remove('inserting', 'selected', 'inserted');
     clone.style.cssText = 'visibility: hidden; position: static; opacity: 1; transform: none;';
     selectedCard.parentNode.insertBefore(clone, selectedCard);
 
@@ -685,7 +707,8 @@ function goBack() {
       ease: 'power2.out',
       onComplete: () => {
         // Now fully reset to normal flow
-        selectedCard.classList.remove('inserting', 'selected');
+        selectedCard.classList.remove('inserting', 'selected', 'inserted');
+        selectedCard.parentNode.classList.remove('card-inserting');
         selectedCard.style.cssText = '';
         gsap.set(selectedCard, { clearProps: 'all' });
         gsap.set(selectedCard, { opacity: 1, y: 0 });
@@ -695,6 +718,17 @@ function goBack() {
 
   // Step 7: Final cleanup
   tl.call(() => {
+    // Reset ALL cards to clean state
+    cards.forEach(card => {
+      card.classList.remove('inserting', 'selected', 'inserted');
+      card.style.cssText = '';
+      gsap.set(card, { clearProps: 'all' });
+    });
+
+    // Reset cards container
+    const cardsContainer = document.querySelector('.cards-container');
+    cardsContainer.classList.remove('card-inserting');
+
     // Reset slot container
     slotContainer.style.cssText = '';
     gsap.set(slotContainer, { clearProps: 'all' });

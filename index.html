@@ -7,51 +7,48 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <canvas id="canvas"></canvas>
+  <!-- Cards Section -->
+  <section class="cards-section">
+    <div class="cards-container">
+      <div class="card card-green" data-index="0">
+        <span class="card-label">Cube Runner</span>
+        <span class="card-icon">&#9632;</span>
+      </div>
+      <div class="card card-yellow" data-index="1">
+        <span class="card-label">Ring World</span>
+        <span class="card-icon">&#9711;</span>
+      </div>
+      <div class="card card-red" data-index="2">
+        <span class="card-label">Crystal Core</span>
+        <span class="card-icon">&#9670;</span>
+      </div>
+    </div>
 
-  <!-- Cards section (hidden initially) -->
-  <main class="cards-section">
-    <!-- The slot (mask container) -->
+    <!-- Slot container -->
     <div class="slot-container">
       <div class="slot-bar top"></div>
       <div class="slot-bar bottom"></div>
     </div>
 
-    <!-- Void mask - outside container for proper z-index -->
+    <!-- The void below the slot -->
     <div class="slot-void"></div>
 
-    <!-- Anime speed lines -->
+    <!-- Speed lines effect -->
     <div class="speed-lines">
       <div class="speed-line left top"></div>
       <div class="speed-line left bottom"></div>
       <div class="speed-line right top"></div>
       <div class="speed-line right bottom"></div>
     </div>
+  </section>
 
-    <!-- Back button -->
-    <button class="back-button">← Back</button>
+  <!-- Back button -->
+  <button class="back-button">← Back</button>
 
-    <!-- Game content area -->
-    <div class="game-content">
-      <canvas id="game-canvas"></canvas>
-    </div>
-
-    <!-- Game cards -->
-    <div class="cards-container">
-      <div class="card card-green" data-index="0" data-title="Cube Runner">
-        <div class="card-icon">▣</div>
-        <span class="card-label">Cube Runner</span>
-      </div>
-      <div class="card card-yellow" data-index="1" data-title="Ring World">
-        <div class="card-icon">◎</div>
-        <span class="card-label">Ring World</span>
-      </div>
-      <div class="card card-red" data-index="2" data-title="Crystal Core">
-        <div class="card-icon">◆</div>
-        <span class="card-label">Crystal Core</span>
-      </div>
-    </div>
-  </main>
+  <!-- Game content area -->
+  <div class="game-content">
+    <canvas id="game-canvas"></canvas>
+  </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
