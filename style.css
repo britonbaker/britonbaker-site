@@ -1,3 +1,10 @@
+:root {
+  --slot-final-top: 60px;
+  --card-overlap: 40px;
+  --card-width: 220px;
+  --card-height: 300px;
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -175,6 +182,32 @@ html, body {
 /* Card at top position after insertion - raise above void */
 .card.inserted {
   z-index: 7;
+}
+
+/* FLIP: Card in final slot position (CSS defines WHERE, JS animates HOW) */
+.card.in-slot {
+  position: fixed;
+  top: calc(var(--slot-final-top) - var(--card-overlap));
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 0;
+  z-index: 7;
+  box-shadow: none !important;
+}
+
+/* FLIP: Other cards hidden when one is selected */
+.card.hidden-away {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* FLIP: Slot in final position */
+.slot-container.at-top {
+  top: var(--slot-final-top) !important;
+}
+
+.slot-void.at-top {
+  top: calc(var(--slot-final-top) + 4px) !important;
 }
 
 /* Anime speed lines - top position set by JS */

@@ -505,151 +505,80 @@ function insertCard(clickedCard) {
 
   const cards = document.querySelectorAll('.card');
   const slotContainer = document.querySelector('.slot-container');
-  const slotBottom = document.querySelector('.slot-bar.bottom');
+  const slotVoid = document.querySelector('.slot-void');
+  const speedLines = document.querySelector('.speed-lines');
+  const backButton = document.querySelector('.back-button');
+  const gameContent = document.querySelector('.game-content');
+  const visualizer = document.querySelector('.visualizer');
   const clickedIndex = Number(clickedCard.dataset.index);
 
-  // Update slot position BEFORE setting cardInserted (updateSlotPosition checks this flag)
+  // Update slot position BEFORE setting cardInserted
   updateSlotPosition();
-
-  // Now mark as inserted to prevent double-clicks
   cardInserted = true;
 
-  // Clear any leftover GSAP properties and inline styles before capturing position
+  // Clean slate
   gsap.set(clickedCard, { clearProps: 'all' });
   clickedCard.style.cssText = '';
+  clickedCard.parentNode.classList.add('card-inserting');
 
-  // Force browser reflow to ensure all layouts are recalculated
-  void slotContainer.offsetHeight;
-  void clickedCard.offsetHeight;
+  // FLIP Step 1: Capture card's starting state
+  const cardState = Flip.getState(clickedCard);
 
-  // Get positions after reflow
-  // Use offsetWidth/offsetHeight to get actual size without hover transform (scale)
-  const slotRect = slotBottom.getBoundingClientRect();
-  const cardWidth = clickedCard.offsetWidth;
-  const cardHeight = clickedCard.offsetHeight;
-  const cardRect = clickedCard.getBoundingClientRect();
-
-  // Calculate target positions - use viewport center for consistent centering
-  const overlapAmount = 40;
-  const viewportCenter = window.innerWidth / 2;
-  const targetLeft = Math.round(viewportCenter - cardWidth / 2);
-  const targetTop = slotRect.top - overlapAmount;
+  // Mark card as selected and apply final CSS state
+  clickedCard.classList.add('selected', 'in-slot');
 
   const tl = gsap.timeline();
 
-  // Step 1: Fade in the slot
+  // Fade in slot and move to final position
   tl.to(slotContainer, {
     opacity: 1,
     duration: 0.3,
     ease: 'power2.out'
   }, 0);
 
-  // Step 2: Slide other cards away (compare by data-index, not DOM order)
+  tl.call(() => {
+    slotContainer.classList.add('at-top');
+    slotVoid.classList.add('at-top');
+  }, [], 0);
+
+  // Slide other cards away
   cards.forEach((card) => {
-    const cardIndex = Number(card.dataset.index);
-    if (cardIndex !== clickedIndex) {
-      const direction = cardIndex < clickedIndex ? -1 : 1;
+    const idx = Number(card.dataset.index);
+    if (idx !== clickedIndex) {
+      const direction = idx < clickedIndex ? -1 : 1;
       tl.to(card, {
         x: direction * (window.innerWidth / 2 + 200),
         opacity: 0,
         duration: 0.4,
-        ease: 'power2.in'
+        ease: 'power2.in',
+        onComplete: () => card.classList.add('hidden-away')
       }, 0.1);
     }
   });
 
-  // Set up fixed positioning - capture current position first
-  const startTop = cardRect.top;
-  const startLeft = cardRect.left;
+  // FLIP Step 2: Animate card from old position to new CSS-defined position
+  // The card will move from its stack position to the .in-slot position
+  tl.add(
+    Flip.from(cardState, {
+      duration: 0.8,
+      ease: 'power2.inOut',
+      absolute: true,
+      onComplete: () => {
+        // Impact effects
+        speedLines.classList.add('active');
+        sfx.playSlotClick();
+      }
+    }),
+    0.2
+  );
 
-  clickedCard.classList.add('inserting');
-  clickedCard.classList.add('selected');
-
-  // Allow card to escape container clipping on mobile
-  clickedCard.parentNode.classList.add('card-inserting');
-
-  // Set initial fixed position
-  clickedCard.style.top = startTop + 'px';
-  clickedCard.style.left = startLeft + 'px';
-  clickedCard.style.margin = '0';
-
-  // STEP 1: Move card to center above the slot
-  tl.to(clickedCard, {
-    top: slotRect.top - cardHeight - 20,
-    left: targetLeft,
-    duration: 0.4,
-    ease: 'power2.out'
-  }, 0.3);
-
-  // STEP 2: Drop straight down into the slot (starts after step 1 finishes)
-  tl.to(clickedCard, {
-    top: targetTop,
-    duration: 0.45,
-    ease: 'power2.in'
-  }, 0.85);
-
-  // Trigger speed lines and click sound on impact
-  const speedLines = document.querySelector('.speed-lines');
-  tl.call(() => {
-    speedLines.classList.add('active');
-    sfx.playSlotClick();
-  }, [], 1.28);
-
-  // Tiny settle bounce
-  tl.to(clickedCard, {
-    top: targetTop + 3,
-    duration: 0.06,
-    ease: 'power1.out'
-  }, 1.3);
-
-  tl.to(clickedCard, {
-    top: targetTop,
-    duration: 0.06,
-    ease: 'power1.in'
-  }, 1.36);
-
-  // After slot animation, move card and slot up together
-  // NOTE: Card stays in cardsContainer (DOM unchanged), just animated with fixed positioning
-  const backButton = document.querySelector('.back-button');
-  const gameContent = document.querySelector('.game-content');
-  const visualizer = document.querySelector('.visualizer');
-  const slotVoid = document.querySelector('.slot-void');
-
-  const finalTop = 60;
-  const cardFinalTop = finalTop - 40; // Same offset as targetTop relative to slot
-
-  // Raise card above void before moving up
-  tl.call(() => {
-    clickedCard.classList.add('inserted');
-  }, [], 1.45);
-
-  // Animate card, slot, and void up together (no DOM moves!)
-  tl.to(clickedCard, {
-    top: cardFinalTop,
-    duration: 0.5,
-    ease: 'power2.out'
-  }, 1.5);
-
-  tl.to(slotContainer, {
-    top: finalTop,
-    duration: 0.5,
-    ease: 'power2.out'
-  }, 1.5);
-
-  tl.to(slotVoid, {
-    top: finalTop + 4,
-    duration: 0.5,
-    ease: 'power2.out'
-  }, 1.5);
-
-  // Show back button, visualizer, and game content, then start the game
+  // Show UI and start game
   tl.call(() => {
     backButton.classList.add('visible');
     visualizer.classList.add('visible');
     gameContent.classList.add('visible');
-    // Initialize the game for this card
     gameManager.init(clickedIndex);
-  }, [], 2.0);
+  }, [], 1.2);
 }
 
 // Back button handler
@@ -659,18 +588,16 @@ function goBack() {
   if (isGoingBack) return;
   isGoingBack = true;
 
-  // Destroy the current game
   gameManager.destroy();
 
   const slotContainer = document.querySelector('.slot-container');
+  const slotVoid = document.querySelector('.slot-void');
   const speedLines = document.querySelector('.speed-lines');
   const backButton = document.querySelector('.back-button');
   const gameContent = document.querySelector('.game-content');
   const visualizer = document.querySelector('.visualizer');
-  const slotVoid = document.querySelector('.slot-void');
   const cards = document.querySelectorAll('.card');
 
-  // Find the selected card (it has the 'selected' class)
   const selectedCard = document.querySelector('.card.selected');
   if (!selectedCard) {
     isGoingBack = false;
@@ -678,16 +605,9 @@ function goBack() {
   }
 
   const selectedIndex = Number(selectedCard.dataset.index);
-
-  // Get responsive values for original positions
-  const { slotTop } = getResponsiveValues();
-  const overlapAmount = 40;
-  const originalSlotTop = slotTop;
-  const originalCardTop = originalSlotTop - overlapAmount;
-
   const tl = gsap.timeline();
 
-  // Step 1: Fade out back button, visualizer, and game content
+  // Fade out UI
   tl.to([backButton, visualizer, gameContent], {
     opacity: 0,
     duration: 0.25,
@@ -699,44 +619,27 @@ function goBack() {
     }
   }, 0);
 
-  // Step 2: Move card, slot, and void back down to center
-  tl.to(selectedCard, {
-    top: originalCardTop,
-    duration: 0.4,
-    ease: 'power2.inOut'
-  }, 0.2);
-
-  tl.to(slotContainer, {
-    top: originalSlotTop,
-    duration: 0.4,
-    ease: 'power2.inOut'
-  }, 0.2);
-
-  tl.to(slotVoid, {
-    top: originalSlotTop + 4,
-    duration: 0.4,
-    ease: 'power2.inOut'
-  }, 0.2);
-
-  // Step 3: Card rises up out of slot (fully visible above slot)
-  tl.to(selectedCard, {
-    top: originalCardTop - 260,
-    duration: 0.35,
-    ease: 'power2.out'
-  }, 0.6);
-
-  // Step 4: Fade out slot (after card is fully out)
+  // Fade out slot
   tl.to(slotContainer, {
     opacity: 0,
     duration: 0.3,
     ease: 'power2.in'
-  }, 0.95);
+  }, 0.2);
 
-  // Step 5: Slide other cards back in first
+  // FLIP Step 1: Capture card's current state (in slot)
   tl.call(() => {
+    const cardState = Flip.getState(selectedCard);
+
+    // Remove slot classes - card returns to normal document flow
+    selectedCard.classList.remove('selected', 'in-slot');
+    slotContainer.classList.remove('at-top');
+    slotVoid.classList.remove('at-top');
+
+    // Slide other cards back in
     cards.forEach(card => {
       const idx = Number(card.dataset.index);
       if (idx !== selectedIndex) {
+        card.classList.remove('hidden-away');
         gsap.to(card, {
           x: 0,
           opacity: 1,
@@ -745,71 +648,36 @@ function goBack() {
         });
       }
     });
-  }, [], 0.9);
 
-  // Step 6: Animate selected card back to its original position in the row
-  tl.call(() => {
-    // Create invisible clone to measure target position without affecting the real card
-    const clone = selectedCard.cloneNode(true);
-    clone.classList.remove('inserting', 'selected', 'inserted');
-    clone.style.cssText = 'visibility: hidden; position: static; opacity: 1; transform: none;';
-    selectedCard.parentNode.insertBefore(clone, selectedCard);
-
-    // Measure where the clone lands in normal flow
-    const targetRect = clone.getBoundingClientRect();
-
-    // Remove the clone
-    clone.remove();
-
-    // Animate the real card to the target position
-    gsap.to(selectedCard, {
-      top: targetRect.top,
-      left: targetRect.left,
-      duration: 0.4,
+    // FLIP Step 2: Animate card back to its natural position
+    Flip.from(cardState, {
+      duration: 0.6,
       ease: 'power2.out',
+      absolute: true,
       onComplete: () => {
-        // Now fully reset to normal flow
-        selectedCard.classList.remove('inserting', 'selected', 'inserted');
-        selectedCard.parentNode.classList.remove('card-inserting');
-        selectedCard.style.cssText = '';
-        gsap.set(selectedCard, { clearProps: 'all' });
-        gsap.set(selectedCard, { opacity: 1, y: 0 });
+        // Final cleanup
+        cards.forEach(card => {
+          card.classList.remove('selected', 'in-slot', 'hidden-away');
+          card.style.cssText = '';
+          gsap.set(card, { clearProps: 'all' });
+        });
+
+        const cardsContainer = document.querySelector('.cards-container');
+        cardsContainer.classList.remove('card-inserting');
+
+        slotContainer.style.cssText = '';
+        slotVoid.style.cssText = '';
+        gsap.set(slotContainer, { clearProps: 'all', opacity: 0 });
+        gsap.set(slotVoid, { clearProps: 'all' });
+
+        speedLines.classList.remove('active');
+        gsap.set([backButton, gameContent, visualizer], { clearProps: 'opacity' });
+
+        cardInserted = false;
+        isGoingBack = false;
       }
     });
-  }, [], 1.1);
-
-  // Step 7: Final cleanup
-  tl.call(() => {
-    // Reset ALL cards to clean state
-    cards.forEach(card => {
-      card.classList.remove('inserting', 'selected', 'inserted');
-      card.style.cssText = '';
-      gsap.set(card, { clearProps: 'all' });
-    });
-
-    // Reset cards container
-    const cardsContainer = document.querySelector('.cards-container');
-    cardsContainer.classList.remove('card-inserting');
-
-    // Reset slot container
-    slotContainer.style.cssText = '';
-    gsap.set(slotContainer, { clearProps: 'all' });
-    gsap.set(slotContainer, { opacity: 0 });
-
-    // Reset void
-    slotVoid.style.cssText = '';
-    gsap.set(slotVoid, { clearProps: 'all' });
-
-    // Reset speed lines
-    speedLines.classList.remove('active');
-
-    // Reset back button/game content/visualizer opacity for next time
-    gsap.set([backButton, gameContent, visualizer], { clearProps: 'opacity' });
-
-    // Allow new card insertion
-    cardInserted = false;
-    isGoingBack = false;
-  }, [], 1.6);
+  }, [], 0.4);
 }
 
 // Add click listeners to cards after DOM loads
