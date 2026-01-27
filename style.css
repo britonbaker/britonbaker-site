@@ -807,6 +807,16 @@ html, body {
     justify-content: center;
   }
 
+  .mute-toggle {
+    min-width: unset;
+    width: 44px;
+    height: 44px;
+  }
+
+  .volume-slider {
+    display: none;
+  }
+
   .game-content {
     top: 80px;
   }
