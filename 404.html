@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="description" content="Interactive experiments by Briton Baker">
+  <title>Briton Baker</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdn.hugeicons.com/font/hgi-stroke-rounded.css">
+  <!-- GoatCounter analytics -->
+  <script data-goatcounter="https://walletmemo.goatcounter.com/count"
+          async src="//gc.zgo.at/count.js"></script>
+</head>
+<body>
+  <!-- Cards Section -->
+  <section class="cards-section">
+    <div class="cards-container">
+      <div class="card card-green" data-index="0">
+        <div class="card-image" style="background-image: url('https://images.unsplash.com/photo-1519608487953-e999c86e7455?w=600&q=80')"></div>
+        <div class="card-gradient"></div>
+        <span class="card-label">Cube Runner</span>
+        <div class="card-icon shape-square"></div>
+      </div>
+      <div class="card card-yellow" data-index="1">
+        <div class="card-image" style="background-image: url('https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=600&q=80')"></div>
+        <div class="card-gradient"></div>
+        <span class="card-label">Ring World</span>
+        <div class="card-icon shape-circle"></div>
+      </div>
+      <div class="card card-red" data-index="2">
+        <div class="card-image" style="background-image: url('https://images.unsplash.com/photo-1534447677768-be436bb09401?w=600&q=80')"></div>
+        <div class="card-gradient"></div>
+        <span class="card-label">Crystal Core</span>
+        <div class="card-icon shape-diamond"></div>
+      </div>
+    </div>
+
+    <!-- Slot container -->
+    <div class="slot-container">
+      <div class="slot-bar"></div>
+      <div class="slot-bar-gradient"></div>
+    </div>
+
+    <!-- Slot glow - behind card, above void -->
+    <div class="slot-glow">
+      <!-- Heavy blur layer (bottom) -->
+      <svg class="glow-layer glow-layer-blur" viewBox="0 0 343 119" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M287.731 69H55.3472C53.8457 69 52.3549 68 51.847 67C48.9241 61.2442 50.3456 50 50.3456 50H292.346C292.346 50 291.352 58.4344 291.352 64.5C291.352 65 291.352 68.5 287.731 69Z" fill="currentColor"/>
+      </svg>
+      <!-- Medium blur layer (middle) -->
+      <svg class="glow-layer glow-layer-mid" viewBox="0 0 343 119" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M287.731 69H55.3472C53.8457 69 52.3549 68 51.847 67C48.9241 61.2442 50.3456 50 50.3456 50H292.346C292.346 50 291.352 58.4344 291.352 64.5C291.352 65 291.352 68.5 287.731 69Z" fill="currentColor"/>
+      </svg>
+      <!-- Light blur layer (top) -->
+      <svg class="glow-layer glow-layer-sharp" viewBox="0 0 343 119" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M287.731 69H55.3472C53.8457 69 52.3549 68 51.847 67C48.9241 61.2442 50.3456 50 50.3456 50H292.346C292.346 50 291.352 58.4344 291.352 64.5C291.352 65 291.352 68.5 287.731 69Z" fill="currentColor"/>
+      </svg>
+    </div>
+
+    <!-- The void below the slot -->
+    <div class="slot-void"></div>
+
+    <!-- Speed lines effect -->
+    <div class="speed-lines">
+      <div class="speed-line left top"></div>
+      <div class="speed-line left bottom"></div>
+      <div class="speed-line right top"></div>
+      <div class="speed-line right bottom"></div>
+    </div>
+  </section>
+
+  <!-- Back button -->
+  <button class="back-button"><i class="hgi-stroke hgi-arrow-left-01"></i></button>
+
+  <!-- Mute button with volume slider -->
+  <div class="mute-button">
+    <button class="mute-toggle">
+      <i class="hgi-stroke hgi-volume-high mute-icon-on"></i>
+      <i class="hgi-stroke hgi-volume-off mute-icon-off"></i>
+    </button>
+    <input type="range" class="volume-slider" min="0" max="100" value="100">
+  </div>
+
+  <!-- Music visualizer -->
+  <div class="visualizer">
+    <div class="visualizer-bar"></div>
+    <div class="visualizer-bar"></div>
+    <div class="visualizer-bar"></div>
+    <div class="visualizer-bar"></div>
+    <div class="visualizer-bar"></div>
+  </div>
+
+  <!-- Game content area -->
+  <div class="game-content">
+    <canvas id="game-canvas"></canvas>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>
