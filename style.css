@@ -805,16 +805,35 @@ html, body {
     width: 44px;
     height: 44px;
     justify-content: center;
+    transition: width 0.25s ease, background 0.2s ease;
+  }
+
+  .mute-button.expanded {
+    width: 160px;
+    justify-content: flex-start;
+    background: rgba(0, 0, 0, 0.06);
   }
 
   .mute-toggle {
-    min-width: unset;
+    min-width: 44px;
     width: 44px;
     height: 44px;
+    flex-shrink: 0;
   }
 
   .volume-slider {
-    display: none;
+    width: 0;
+    opacity: 0;
+    margin: 0;
+    pointer-events: none;
+    transition: width 0.25s ease, opacity 0.25s ease, margin 0.25s ease;
+  }
+
+  .mute-button.expanded .volume-slider {
+    width: 90px;
+    opacity: 1;
+    margin: 0 12px 0 0;
+    pointer-events: auto;
   }
 
   .game-content {

@@ -1255,6 +1255,50 @@ document.addEventListener('DOMContentLoaded', () => {
   // Prevent slider from triggering parent events
   volumeSlider.addEventListener('click', (e) => e.stopPropagation());
 
+  // Mobile: tap to expand volume slider, auto-collapse after delay
+  let collapseTimeout = null;
+  const isMobile = window.matchMedia('(max-width: 768px)').matches;
+  
+  function collapseVolumeSlider() {
+    muteButton.classList.remove('expanded');
+  }
+  
+  function resetCollapseTimer() {
+    if (collapseTimeout) clearTimeout(collapseTimeout);
+    collapseTimeout = setTimeout(collapseVolumeSlider, 3000);
+  }
+  
+  if (isMobile) {
+    muteButton.addEventListener('click', (e) => {
+      // Only expand if clicking the container (not the toggle or slider)
+      if (e.target === muteButton) {
+        muteButton.classList.add('expanded');
+        resetCollapseTimer();
+      }
+    });
+    
+    // Keep open while sliding
+    volumeSlider.addEventListener('input', () => {
+      resetCollapseTimer();
+    });
+    
+    volumeSlider.addEventListener('touchstart', () => {
+      if (collapseTimeout) clearTimeout(collapseTimeout);
+    });
+    
+    volumeSlider.addEventListener('touchend', () => {
+      resetCollapseTimer();
+    });
+    
+    // Also expand when tapping the mute toggle
+    muteToggle.addEventListener('click', () => {
+      if (!muteButton.classList.contains('expanded')) {
+        muteButton.classList.add('expanded');
+      }
+      resetCollapseTimer();
+    });
+  }
+
   // Handle browser back/forward buttons
   window.addEventListener('popstate', (e) => {
     const gameIndex = e.state?.game ?? getGameFromPath();
