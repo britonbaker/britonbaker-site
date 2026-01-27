@@ -477,6 +477,7 @@ html, body {
   justify-content: flex-start;
   overflow: hidden;
   width: 40px;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .mute-button:hover {
@@ -490,8 +491,8 @@ html, body {
 
 /* Mute toggle button inside container */
 .mute-toggle {
-  width: 40px;
-  height: 40px;
+  width: 100%;
+  height: 100%;
   min-width: 40px;
   padding: 0;
   background: transparent;
@@ -504,10 +505,11 @@ html, body {
   align-items: center;
   justify-content: center;
   transition: background 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .mute-toggle:hover {
-  background: rgba(0, 0, 0, 0.08);
+  background: transparent;
 }
 
 .mute-button .mute-icon-off {
